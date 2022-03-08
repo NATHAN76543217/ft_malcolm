@@ -1,6 +1,6 @@
 [submodule "argparse"]
-	path = lib/argparse
+	path = ./lib/argparse
 	url = https://github.com/NATHAN76543217/argparse.git
 [submodule "libft"]
-	path = lib/libft
+	path = ./lib/libft
 	url = https://github.com/NATHAN76543217/libft.git
