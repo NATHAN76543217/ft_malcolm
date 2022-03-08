@@ -25,7 +25,7 @@ SRCS		=	ft_malcolm.c \
 				utils.c
 HEADERS		=	ft_malcolm.h
 
-LIBRARIES	= libft argparse
+LIBRARIES	=	libft argparse
 
 
 # Openssl

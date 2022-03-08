@@ -6,59 +6,69 @@ A man-in-the-middle attack script by ARP spoofing.
 Run the command `make`.
 Usage: `./ft_malcolm src_ip src_mac_address target_ip target_mac_address`
 
+# options
+	Usage: ./ft_malcolm [options] [--] target1_ip target1_mac target2_ip target2_mac
+	ARP spoofing (poisoning) program.
+
+		-h, --help                show this help message and exit
+
+	Basic options
+		-v, --verbose             enable verbose mode.
+		-i, --interface=<str>     force to use a specific interface.
+	
 # Processus
 
 The Address Resolution Protocol (ARP) is a `request-response` process by which a known IP address is mapped to an unknow MAC address.   
 In a Linux system, arp cache is accessible into /proc/net/arp (stored in RAM).
 
 ## Packet structure
-    An ARP message is always related to only one (1) address resolution.   
-    The size of the ARP message depends on the link layer and network layer address sizes. For IPv4 it's 28 bytes.   
-     
+	An ARP message is always related to only one (1) address resolution.   
+	The size of the ARP message depends on the link layer and network layer address sizes. For IPv4 it's 28 bytes.   
+	 
 Two query: 
 - Request:
 - Reply: 
 
 ### Header
-    The message header specifies the types of network in use at each layer as well as the size of addresses of each.   
-    The message header is completed with the operation code for request (1) and reply (2).    
-    The payload of the packset consists of four addresses, the hardware and protocol address of the sender and receiver hosts.  
+	The message header specifies the types of network in use at each layer as well as the size of addresses of each.   
+	The message header is completed with the operation code for request (1) and reply (2).    
+	The payload of the packset consists of four addresses, the hardware and protocol address of the sender and receiver hosts.  
 
-    Total: 8 bytes   
-    - Htype 2 byte
-    - Ptype 2 byte
-        for IPv4 the value is :`0x0800`
-    - Hlen 1 byte
-    - Plen 1 byte
-    - Operation 2 byte
-        The value is either 1 for a request or 2 for a reply.
+	Total: 8 bytes   
+	- Htype 2 byte
+	- Ptype 2 byte
+		for IPv4 the value is :`0x0800`
+	- Hlen 1 byte
+	- Plen 1 byte
+	- Operation 2 byte
+		The value is either 1 for a request or 2 for a reply.
 ### Sender
-    Total: 10 bytes   
-    - SHA 6 bytes
-    - SPA 4 bytes
+	Total: 10 bytes   
+	- SHA 6 bytes
+	- SPA 4 bytes
 ### Target
-    Total: 10 bytes   
-    - THA 6 bytes
-    - TPA 4 bytes
-     
+	Total: 10 bytes   
+	- THA 6 bytes
+	- TPA 4 bytes
+	 
 Congif:
 - PC A
 - PC B
 - PC C
 # TODO
-    Detect arp request on an interface
-    then
-    send an ARP reply to Target saying we are src => now target think we are SRC 
-    send an ARP reply to SRC saying we are Target => now SRC think we are Target 
+	Detect arp request on an interface
+	then
+	send an ARP reply to Target saying we are src => now target think we are SRC 
+	send an ARP reply to SRC saying we are Target => now SRC think we are Target 
 
 IP:  192.168.1.98
 this IP boadcast:  192.168.1.255
 standard IP boadcast:  255.255.255.255
 MAC broadcast: FF:FF:FF:FF:FF:FF
 Avant:
-    A et B communique
+	A et B communique
 Après:
-    A envoie à B(C) et C transmet à B(B).
+	A envoie à B(C) et C transmet à B(B).
 Je dois envoyer une reply normalement.
 
 
@@ -81,6 +91,8 @@ https://www.freebsd.org/cgi/man.cgi?query=bpf&sektion=4&manpath=FreeBSD+4.7-RELE
 https://circle-networks.com/resources?lang=en&doc=bl200076p
 https://www.freebsd.org/cgi/man.cgi?query=bpf&sektion=4&manpath=FreeBSD+7.1-RELEASE
 https://www.vankuik.nl/2012-02-09_Writing_ethernet_packets_on_OS_X_and_BSD
+Debian shortcut https://nui.fr/obsolescence-de-net-tools-ifconfig-ping/
+
 Broadcasting udp package: `nc -ub broadcast_addr port` on linux
 
 TO NOT DO: program that wait UDP

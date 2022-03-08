@@ -2,38 +2,39 @@
 
 #ifdef OSX
 
-int bpfSetOption(int fd, char *ifname)
+int bpfSetOption(ft_malcolm *malc)
 {
 	struct ifreq ifr;
 	u_int32_t enable = 1;
 
+	if (malc->verbose)
+		dprintf(STDOUT_FILENO, "Setting bpf options.\n");
 	/* Associate the bpf device with an interface */ //TODO ft_strlcpy
-	strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name)-1);
-	if(ioctl(fd, BIOCSETIF, &ifr) < 0)
+	ft_strlcpy(ifr.ifr_name, malc->if_name, sizeof(ifr.ifr_name)-1);
+	if(ioctl(malc->socket, BIOCSETIF, &ifr) < 0)
 		return -1;
 
 	/* Set header complete mode */
-	if(ioctl(fd, BIOCSHDRCMPLT, &enable) < 0)
+	if(ioctl(malc->socket, BIOCSHDRCMPLT, &enable) < 0)
 		return -1;
 
 	/* Monitor packets sent from our interface */
-	if(ioctl(fd, BIOCSSEESENT, &enable) < 0)
+	if(ioctl(malc->socket, BIOCSSEESENT, &enable) < 0)
 		return -1;
 
 	/* Return immediately when a packet received */
-	if(ioctl(fd, BIOCIMMEDIATE, &enable) < 0)
+	if(ioctl(malc->socket, BIOCIMMEDIATE, &enable) < 0)
 		return -1;
 
 	return 0;
 }
 
-int bpfCheckDlt(int fd)
+int bpfCheckDlt(ft_malcolm *malc)
 {
 	u_int32_t dlt = 0;
 
-
 	/* Ensure we are dumping the datalink we expect DLT described in <net/bpf.h> */
-	if(ioctl(fd, BIOCGDLT, &dlt) < 0)
+	if(ioctl(malc->socket, BIOCGDLT, &dlt) < 0)
 		return EXIT_FAILURE;
 
 	switch (dlt) {
@@ -47,7 +48,8 @@ int bpfCheckDlt(int fd)
 	}
 }
 
-int	bpfSetFilter(int fd)
+
+int	bpfSetFilter(ft_malcolm *malc)
 {
 	struct bpf_program fcode = {0};
 
@@ -71,7 +73,7 @@ int	bpfSetFilter(int fd)
 	fcode.bf_len = sizeof(insns) / sizeof(struct bpf_insn);
 	fcode.bf_insns = &insns[0];
 
-	if(ioctl(fd, BIOCSETF, &fcode) < 0)
+	if(ioctl(malc->socket, BIOCSETF, &fcode) < 0)
 		return EXIT_FAILURE;
 	return EXIT_SUCCESS;
 }
@@ -89,19 +91,22 @@ int read_packets(ft_malcolm *malc)
 	struct  ether_header	*eh = NULL;
 
 	/* get internal bpf's buffer size */
-	if(ioctl(malc->recv_socket, BIOCGBLEN, &blen) < 0)
+	if(ioctl(malc->socket, BIOCGBLEN, &blen) < 0)
 		return EXIT_FAILURE;
 
 	if ( (malc->buffer = malloc(blen)) == NULL)
+	{
+		dprintf(STDERR_FILENO, "malloc buffer failed: %s\n", strerror(errno));
 		return EXIT_FAILURE;
+	}
 
-	(void)printf("reading packets ... waiting a msg from(%s)\n", get_ip_str(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN));
+	dprintf(STDOUT_FILENO, "Waitig a msg from(%s)\n", ipToStr(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN));
 
 	while (1)
 	{
 		ft_memset(malc->buffer, '\0', blen);
 
-		n = read(malc->recv_socket, malc->buffer, blen);
+		n = read(malc->socket, malc->buffer, blen);
 
 		if (n < 0)
 		{
@@ -145,7 +150,7 @@ int read_packets(ft_malcolm *malc)
 			dprintf(STDOUT_FILENO,"1 - %d\n"
 			"2- %d | sha == %u (%u.%u.%u.%u) | srcMac == %u (%u.%u.%u.%u)\n"
 			"3- %d\n"
-			"4- %d\n",//TODO fix conditional errors then test if we pass in spoof function then check that we send a good reply then check if arp table of the source is poisonned by us (have a target entry)
+			"4- %d\n",
 					(ntohs(ah->ea_hdr.ar_op) == ARPOP_REQUEST),
 					!ft_memcmp(ah->arp_sha, &malc->srcMac, ETHER_ADDR_LEN),
 					TPA, 
@@ -173,8 +178,8 @@ int read_packets(ft_malcolm *malc)
 					eh->ether_shost[3], eh->ether_shost[4], eh->ether_shost[5],
 					eh->ether_dhost[0], eh->ether_dhost[1], eh->ether_dhost[2],
 					eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5],
-					get_ip_str(&malc->sockTargetIp, ipBuf2, INET_ADDRSTRLEN),
-					get_ip_str(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN ));
+					ipToStr(&malc->sockTargetIp, ipBuf2, INET_ADDRSTRLEN),
+					ipToStr(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN ));
 					/* Tell source that we are target */
 					spoofArp(malc);
 			}
