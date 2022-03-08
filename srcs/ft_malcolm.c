@@ -235,11 +235,11 @@ int parsing_arguments(int ac, char **av, ft_malcolm *malc)
         OPT_END(),
     };
 	struct argparse argparse;
-	dprintf(1, "ac=%d\n", ac);
+	dprintf(STDOUT_FILENO, "ac=%d\n", ac);
     argparse_init(&argparse, options, usages, 0);
     argparse_describe(&argparse, "\nARP spoofing (poisoning) program.", "\nAdditional description of the program after the description of the arguments.");
     ac = argparse_parse(&argparse, ac, (const char**)av);
-	dprintf(1, "ac=%d\n", ac);
+	dprintf(STDOUT_FILENO, "ac=%d\n", ac);
 	if (ac < 4)
 	{
 		argparse_usage(&argparse);
