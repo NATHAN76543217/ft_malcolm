@@ -25,10 +25,19 @@
 #  include <net/if.h>
 #  include <net/if_dl.h> // sockaddr_dl
 #  include <net/bpf.h>
+
 # endif
 
 # include "libft.h"
 # include "argparse.h"
+
+
+struct ft_malcolm_options
+{
+	int				verbose;
+	int				reverse;
+	char    		*ifName;
+};
 
 
 typedef struct ft_malcolm
@@ -47,9 +56,7 @@ typedef struct ft_malcolm
 	struct ether_addr	targetMac;
 	u_char				targetIp[4];
 	int					socket;
-	int					verbose;
-	char    			if_name[IF_NAMESIZE];
-
+	struct ft_malcolm_options  opt;
 }				ft_malcolm;
 
 

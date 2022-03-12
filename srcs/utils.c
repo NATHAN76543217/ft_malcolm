@@ -13,7 +13,7 @@ void     ipToSockaddr(const u_char ip[IPV4_ADDR_LEN], struct sockaddr *sock)
 	sock->sa_len = 16;
 	sock->sa_family = AF_INET;
 	ft_memcpy( &((struct sockaddr_in *) sock)->sin_addr, ip, IPV4_ADDR_LEN);
-}
+} 
 
 
 

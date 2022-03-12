@@ -31,10 +31,10 @@ int	spoofArp(ft_malcolm *malc)
 	ethhdr = (struct ether_header *)malc->msg;
 	arphdr = (struct ether_arp *)(ethhdr + 1);
 
-	if (getMacAddress(&localMac, malc->if_name))
+	if (getMacAddress(&localMac, malc->opt.ifName))
 		return EXIT_FAILURE;
 
-    dprintf(STDOUT_FILENO, "interface: `%s` has MAC address equal to: %02x:%02x:%02x:%02x:%02x:%02x\n", 			malc->if_name,
+    dprintf(STDOUT_FILENO, "interface: `%s` address is equal to: %02x:%02x:%02x:%02x:%02x:%02x\n", 			malc->opt.ifName,
 		localMac.octet[0], localMac.octet[1],
 		localMac.octet[2], localMac.octet[3],
 		localMac.octet[4], localMac.octet[5]);
@@ -99,7 +99,7 @@ int init_connection(ft_malcolm * malc, char **av)
 
 	/* Get interface name */
 	getInterfaces(malc, 0);
-	ft_strncpy(malc->if_name, malc->used_ifs->ifa_name, IF_NAMESIZE);
+	ft_strncpy(malc->opt.ifName, malc->used_ifs->ifa_name, IF_NAMESIZE);
 
 	/* Get IP of this interface */
 	ft_memcpy(malc->ownIP, malc->used_ifs->ifa_addr->sa_data, IPV4_ADDR_LEN);
@@ -107,13 +107,13 @@ int init_connection(ft_malcolm * malc, char **av)
 	/* extract MAC  target 1*/
 	ft_capitalize(av[1]);
 	strToMac(&malc->srcMac, av[1]);
-	if (malc->verbose)
+	if (malc->opt.verbose)
 		printMac(&malc->srcMac, "target1 MAC address:");
 	ft_capitalize(av[3]);
 
 	/* extract MAC  target 2*/
 	strToMac(&malc->targetMac, av[3]);
-	if (malc->verbose)
+	if (malc->opt.verbose)
 		printMac(&malc->targetMac, "target2 MAC address:");
 
 	struct hostent *hps = gethostbyname(av[0]);
@@ -162,68 +162,94 @@ int	clean_quit(ft_malcolm *malc)
 
 int waitArpRequestOsx(ft_malcolm *malc)
 {
-	if (openBpfFile(&malc->socket, STDOUT_FILENO, malc->verbose)
+	if (openBpfFile(&malc->socket, STDOUT_FILENO, malc->opt.verbose)
 		|| bpfSetOption(malc)
 		|| bpfCheckDlt(malc)
 		|| bpfSetFilter(malc))
 		return EXIT_FAILURE;
 	if (read_packets(malc))
 		return EXIT_FAILURE;
-	dprintf(STDOUT_FILENO, "Now get ready to send an ARP reply\n");
+	close(malc->socket);
+
 	return EXIT_SUCCESS;
 }
 
 int parsing_arguments(int ac, char **av, ft_malcolm *malc)
 {
-	char buf[4096];
-	if (ft_strlen(av[0]) > 4000)
-		av[0][4000] = '\0';
-	buf[sprintf(buf, "%s [options] [--] target1_ip target1_mac target2_ip target2_mac", av[0])] = '\0';
-	const char *const usages[] = {
-    	buf,
-    	NULL,
-	};
+	char			buf1[256];
+	char			buf2[256];
+	struct argparse	argparse;
+	const char	*const usages[] = { buf1, buf2, NULL };
+
+//
+	if (ft_strlen(av[0]) > 100)
+		av[0][100] = '\0';
+
+	buf1[sprintf(buf1, "%s    [options] [--] source_ip source_mac ip_to_usurp", av[0])] = '\0';
+	buf2[sprintf(buf2, "%s -r [options] [--] source_ip source_mac target_ip target_mac", av[0])] = '\0';
+
 	struct argparse_option options[] = {
         OPT_HELP(),
         OPT_GROUP("Basic options"),
-        OPT_BOOLEAN('v', "verbose", &malc->verbose, "enable verbose mode.", NULL, 0, 0),
-        OPT_STRING('i', "interface", &malc->if_name, "force to use a specific interface.", NULL, 0, 0),
-		//add timeout SO_RCVTIMEO
+        OPT_STRING('i', "interface", &malc->opt.ifName, "Force to use a specific interface.", NULL, 0, 0),
+        OPT_GROUP("Modes:"),
+        OPT_BOOLEAN('v', "verbose", &malc->opt.verbose, "Enable verbose mode.", NULL, 0, 0),
+        OPT_BOOLEAN('r', "reverse", &malc->opt.reverse, "Bidirectional spoof (Man-in-the-middle).", NULL, 0, 0),
+		//add timeout with socket option SO_RCVTIMEO (add option -t second)
         OPT_END(),
     };
-	struct argparse argparse;
+
     argparse_init(&argparse, options, usages, 0);
-    argparse_describe(&argparse, "\nARP spoofing (poisoning) program.", "\nAdditional description of the program after the description of the arguments.");
+    argparse_describe(&argparse, "\nARP spoofing (poisoning) program.", "\nBy default this program redirect all data from source to target_ip\ninto the first available interface.");
     ac = argparse_parse(&argparse, ac, (const char**)av);
-	if (ac < 4)
+	if (ac < 5 || ac > 2)
 	{
-		argparse_usage(&argparse);
-		return EXIT_FAILURE;
+		if ((malc->opt.reverse && ac == 3)
+			||	(!malc->opt.reverse && ac == 4))
+			return EXIT_SUCCESS;
 	}
-	return EXIT_SUCCESS;
+	argparse_usage(&argparse);
+	return EXIT_FAILURE;
+}
+
+static void	displayOptState(ft_malcolm *malc)
+{
+	dprintf(STDOUT_FILENO, "Mode:\n");
+	if (malc->opt.reverse)
+		dprintf(STDOUT_FILENO, "-r	Bidirectional mode: redirect to us every communications between the source and the target.\n");
+	if (malc->opt.verbose)
+		dprintf(STDOUT_FILENO, "-v	Verbose mode: display more informations.\n");
+	// if (malc->opt.ifName)
+		// dprintf(STDOUT_FILENO, "-i	interface mode: display more informations.\n");
+	
+	return ;
 }
 
 int main(int ac, char **av)
 {
-	ft_malcolm malc;
+	ft_malcolm	malc;
 
-	if (parsing_arguments(ac, av, &malc))
+	if (parsing_arguments(ac, av, &malc)
+	||	init_connection(&malc, av))
 		return EXIT_FAILURE;
-	if (init_connection(&malc, av))
-		return EXIT_FAILURE;
-	dprintf(STDOUT_FILENO, "Verbose mode %s.\n", (malc.verbose) ? "enabled" : "disabled");
+	if (malc.opt.verbose)
+	{
+		dprintf(STDOUT_FILENO, "Verbose mode enabled.\n");
+		displayOptState(&malc);
+	}
+	else
+		dprintf(STDOUT_FILENO, "Verbose mode disabled.\n");
+
+
 # ifdef LINUX
 	if (waitArpRequest(&malc))
 		return EXIT_FAILURE;
 # elif defined OSX
-	while (1) {
 		if (waitArpRequestOsx(&malc))
 			return EXIT_FAILURE;
 
 		/* Tell target that we are source */
 			// spoofArp(&malc);
-		close(malc.socket);
-	}
 # endif
 	if (clean_quit(&malc))
 		return EXIT_FAILURE;
