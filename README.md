@@ -91,6 +91,7 @@ https://circle-networks.com/resources?lang=en&doc=bl200076p
 https://www.freebsd.org/cgi/man.cgi?query=bpf&sektion=4&manpath=FreeBSD+7.1-RELEASE
 Debian shortcut https://nui.fr/obsolescence-de-net-tools-ifconfig-ping/
 
+SO_BINDTODEVICE is deprecated since 1999.
 # usefull for OSX
 https://www.vankuik.nl/2012-02-09_Writing_ethernet_packets_on_OS_X_and_BSD
 

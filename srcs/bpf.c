@@ -168,8 +168,8 @@ int read_packets(ft_malcolm *malc)
 			// 		);
 			if (ntohs(ah->ea_hdr.ar_op) == ARPOP_REQUEST &&
 				// !ft_memcmp(ah->arp_sha, &malc->srcMac, ETHER_ADDR_LEN) && 
-				// (*(uint*)ah->arp_spa == ipToInt(&malc->sockSrcIp)) &&
-				(*(uint*)ah->arp_tpa == ipToInt(&malc->sockTargetIp))
+				// (*(uint32_t*)ah->arp_spa == ipToInt(&malc->sockSrcIp)) &&
+				(*(uint32_t*)ah->arp_tpa == ipToInt(&malc->sockTargetIp))
 				)
 			{
 				// dprintf(STDOUT_FILENO, "\nAccept request:\n%02x:%02x:%02x:%02x:%02x:%02x "
