@@ -1,19 +1,7 @@
 # include "ft_malcolm.h"
 
-/*
-** Fill an Ethernet Packet with provided data
-*/
-int	fillEtherPacket(struct ether_header *eth, struct ether_addr *src, struct ether_addr *dst, u_short type)
-{
-	if (!eth || !src || !dst)
-		return EXIT_FAILURE;
-	ft_memcpy(eth->ether_shost, src, ETHER_ADDR_LEN);
-	ft_memcpy(eth->ether_dhost, dst, ETHER_ADDR_LEN);
-	eth->ether_type = htons(type);
-	return EXIT_SUCCESS;
-}
 
-
+# ifdef OSX
 int	spoofArp(ft_malcolm *malc)
 {
 	size_t					packageSize = sizeof(struct ether_header) + sizeof(struct ether_arp);
@@ -31,10 +19,10 @@ int	spoofArp(ft_malcolm *malc)
 	ethhdr = (struct ether_header *)malc->msg;
 	arphdr = (struct ether_arp *)(ethhdr + 1);
 
-	if (getMacAddress(&localMac, malc->if_name))
+	if (getMacAddress(&localMac, malc->opt.ifName))
 		return EXIT_FAILURE;
 
-    dprintf(STDOUT_FILENO, "interface: `%s` has MAC address equal to: %02x:%02x:%02x:%02x:%02x:%02x\n", 			malc->if_name,
+    dprintf(STDOUT_FILENO, "interface: `%s` has MAC address equal to: %02x:%02x:%02x:%02x:%02x:%02x\n", 			malc->opt.ifName,
 		localMac.octet[0], localMac.octet[1],
 		localMac.octet[2], localMac.octet[3],
 		localMac.octet[4], localMac.octet[5]);
@@ -63,7 +51,7 @@ int	spoofArp(ft_malcolm *malc)
 
 	return EXIT_SUCCESS;
 }
-
+# endif//OSX 
 
 int		getInterfaces(ft_malcolm *malc, int all)
 {
@@ -88,7 +76,7 @@ int		getInterfaces(ft_malcolm *malc, int all)
 		}
 		if_current=if_current->ifa_next;
 	}
-	dprintf(STDOUT_FILENO, "using [%s]\n", malc->used_ifs->ifa_name);
+	dprintf(STDOUT_FILENO, "using [%s] %d\n", malc->used_ifs->ifa_name, IF_NAMESIZE);
 	return EXIT_SUCCESS;
 }
 
@@ -98,8 +86,9 @@ int init_connection(ft_malcolm * malc, char **av)
 	ft_memset(&malc->conn, '\0', sizeof(struct sockaddr_in));
 
 	/* Get interface name */
-	getInterfaces(malc, 0);
-	ft_strncpy(malc->if_name, malc->used_ifs->ifa_name, IF_NAMESIZE);
+	if (getInterfaces(malc, 0))
+		return EXIT_FAILURE;
+	ft_strncpy(malc->ifName, malc->used_ifs->ifa_name, IF_NAMESIZE);
 
 	/* Get IP of this interface */
 	ft_memcpy(malc->ownIP, malc->used_ifs->ifa_addr->sa_data, IPV4_ADDR_LEN);
@@ -151,6 +140,52 @@ int init_connection(ft_malcolm * malc, char **av)
 	return EXIT_SUCCESS;
 }
 
+
+uint32_t	ft_malcolm_linux(ft_malcolm *malc)
+{
+	int					enableBroadcast = 1;
+	struct sockaddr si_other;
+	// struct sockaddr_ll	socket_address;
+	dprintf(STDOUT_FILENO, "ftlinux\n");
+
+	// Create a socket enabled for receiving ARP packets
+	if ((malc->socket = socket(AF_PACKET, SOCK_RAW, ETH_P_ARP)) < 0)
+	{
+		dprintf(STDERR_FILENO, "Failed to initialize socket: %s\n", strerror(errno));
+		return EXIT_FAILURE;
+	}
+	if (setsockopt(malc->socket, SOL_SOCKET, SO_BROADCAST, &enableBroadcast, sizeof(enableBroadcast)))
+	{
+		dprintf(STDERR_FILENO, "Failed to set socket SO_BROADCAST option: %s\n", strerror(errno));
+		return EXIT_FAILURE;	
+	}
+	dprintf(STDOUT_FILENO, "Binding socket to interface [%s]\n", malc->ifName);
+	if (setsockopt(malc->socket, SOL_SOCKET, SO_BINDTODEVICE, &malc->ifName, sizeof(malc->ifName)))
+	{
+		dprintf(STDERR_FILENO, "Failed to set socket SO_BINDTODEVICE option: %s\n", strerror(errno));
+		return EXIT_FAILURE;	
+	}
+
+
+	char	buf[10000];
+	char	buf2[42];
+	int		ret = 0;
+	unsigned slen=sizeof(struct sockaddr);
+	dprintf(STDOUT_FILENO, "wait incoming data\n");
+	while(1)
+	{
+	    ret = recvfrom(malc->socket, buf, sizeof(buf)-1, 0, (struct sockaddr *)&si_other, &slen);
+		if (ret < 0)
+		{
+			dprintf(STDERR_FILENO, "Recvfrom failed because of: %s\n", strerror(errno));
+			return EXIT_FAILURE;
+		}
+		buf[ret] = '\0';
+	    dprintf(STDOUT_FILENO, "recv: %s from %s\n", buf, ipToStr(((struct sockaddr*)&si_other), buf2, 41));
+	}
+
+	return EXIT_SUCCESS;
+}
 int	clean_quit(ft_malcolm *malc)
 {
 	dprintf(STDOUT_FILENO, "Cleaning program...\n");
@@ -159,6 +194,7 @@ int	clean_quit(ft_malcolm *malc)
 	return EXIT_SUCCESS;
 }
 
+# ifdef OSX
 
 int waitArpRequestOsx(ft_malcolm *malc)
 {
@@ -172,6 +208,8 @@ int waitArpRequestOsx(ft_malcolm *malc)
 	dprintf(STDOUT_FILENO, "Now get ready to send an ARP reply\n");
 	return EXIT_SUCCESS;
 }
+# endif //OSX
+
 
 int parsing_arguments(int ac, char **av, ft_malcolm *malc)
 {
@@ -187,7 +225,7 @@ int parsing_arguments(int ac, char **av, ft_malcolm *malc)
         OPT_HELP(),
         OPT_GROUP("Basic options"),
         OPT_BOOLEAN('v', "verbose", &malc->verbose, "enable verbose mode.", NULL, 0, 0),
-        OPT_STRING('i', "interface", &malc->if_name, "force to use a specific interface.", NULL, 0, 0),
+        OPT_STRING('i', "interface", &malc->opt.ifName, "force to use a specific interface.", NULL, 0, 0),
 		//add timeout SO_RCVTIMEO
         OPT_END(),
     };
@@ -213,7 +251,7 @@ int main(int ac, char **av)
 		return EXIT_FAILURE;
 	dprintf(STDOUT_FILENO, "Verbose mode %s.\n", (malc.verbose) ? "enabled" : "disabled");
 # ifdef LINUX
-	if (waitArpRequest(&malc))
+	if (ft_malcolm_linux(&malc))
 		return EXIT_FAILURE;
 # elif defined OSX
 	while (1) {

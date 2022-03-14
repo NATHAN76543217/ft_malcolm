@@ -2,22 +2,22 @@
 
 
 
-
-uint		ipToInt(const struct sockaddr *ip)
+uint32_t	ipToInt(const struct sockaddr *ip)
 {
 	return ((struct sockaddr_in *)ip)->sin_addr.s_addr;
 }
 
-void     ipToSockaddr(const u_char ip[IPV4_ADDR_LEN], struct sockaddr *sock)
+void     ipToSockaddr(const uint8_t ip[IPV4_ADDR_LEN], struct sockaddr *sock)
 {
+# ifdef OSX
 	sock->sa_len = 16;
+# endif //OSX
 	sock->sa_family = AF_INET;
 	ft_memcpy( &((struct sockaddr_in *) sock)->sin_addr, ip, IPV4_ADDR_LEN);
 }
 
-
-
-int     getMacAddress(struct ether_addr *ethAddr, const char* ifname)
+# ifdef OSX
+int     getifMac(struct ether_addr *ethAddr, const char* ifname)
 {
 	int     mib[6] = { CTL_NET, PF_ROUTE, 0, AF_LINK, NET_RT_IFLIST, 0 };
 	size_t  len = 0;
@@ -43,10 +43,12 @@ int     getMacAddress(struct ether_addr *ethAddr, const char* ifname)
 
 	struct if_msghdr    *ifm = (struct if_msghdr *) buf;
 	struct sockaddr_dl  *sdl = (struct sockaddr_dl *)(ifm + 1);
-	u_char *macAddr = (u_char *) LLADDR(sdl);
+	uint8_t *macAddr = (uint8_t *) LLADDR(sdl);
 	ft_memcpy(ethAddr, macAddr, ETHER_ADDR_LEN);
 	return EXIT_SUCCESS;
 }
+
+# endif //OSX
 
 // RECV an UDP packet
 // int waitUDPRequest(ft_malcolm *malc)

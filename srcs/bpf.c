@@ -10,7 +10,7 @@ int bpfSetOption(ft_malcolm *malc)
 	if (malc->verbose)
 		dprintf(STDOUT_FILENO, "Setting bpf options.\n");
 	/* Associate the bpf device with an interface */ //TODO ft_strlcpy
-	ft_strlcpy(ifr.ifr_name, malc->if_name, sizeof(ifr.ifr_name)-1);
+	ft_strlcpy(ifr.ifr_name, malc->opt.ifName, sizeof(ifr.ifr_name)-1);
 	if(ioctl(malc->socket, BIOCSETIF, &ifr) < 0)
 		return -1;
 
@@ -129,10 +129,10 @@ int read_packets(ft_malcolm *malc)
 			ah = (struct ether_arp *)(eh + 1);
 				
 
-			uint SPA = (*(uint*)ah->arp_spa);
+			uint32_t SPA = (*(uint32_t*)ah->arp_spa);
 			u_char *cSPA = (u_char *)&SPA;
 
-			uint TPA = (*(uint*)ah->arp_tpa);
+			uint32_t TPA = (*(uint32_t*)ah->arp_tpa);
 			u_char *cTPA = (u_char *)&TPA;
 				dprintf(STDOUT_FILENO, "Receive an ARP request:\n%02x:%02x:%02x:%02x:%02x:%02x "
 					"%02x:%02x:%02x:%02x:%02x:%02x REQ Who has (%u.%u.%u.%u)? Tell (%u.%u.%u.%u)\n",
@@ -142,7 +142,7 @@ int read_packets(ft_malcolm *malc)
 					eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5],
 					cTPA[0], cTPA[1], cTPA[2], cTPA[3],
 					cSPA[0], cSPA[1], cSPA[2], cSPA[3]);
-			uint intIp = (ipToInt(&malc->sockTargetIp));
+			uint32_t intIp = (ipToInt(&malc->sockTargetIp));
 			u_char *charIp = (u_char *)&intIp;
 
 
@@ -163,13 +163,13 @@ int read_packets(ft_malcolm *malc)
 					charIp[1],
 					charIp[2],
 					charIp[3],
-					(*(uint*)ah->arp_spa == ipToInt(&malc->sockSrcIp)),
-					(*(uint*)ah->arp_tpa == ipToInt(&malc->sockTargetIp))
+					(*(uint32_t*)ah->arp_spa == ipToInt(&malc->sockSrcIp)),
+					(*(uint32_t*)ah->arp_tpa == ipToInt(&malc->sockTargetIp))
 					);
 			if (ntohs(ah->ea_hdr.ar_op) == ARPOP_REQUEST &&
 				// !ft_memcmp(ah->arp_sha, &malc->srcMac, ETHER_ADDR_LEN) && 
-				// (*(uint*)ah->arp_spa == ipToInt(&malc->sockSrcIp)) &&
-				(*(uint*)ah->arp_tpa == ipToInt(&malc->sockTargetIp))
+				// (*(uint32_t*)ah->arp_spa == ipToInt(&malc->sockSrcIp)) &&
+				(*(uint32_t*)ah->arp_tpa == ipToInt(&malc->sockTargetIp))
 				)
 			{
 				dprintf(STDOUT_FILENO, "\nAccept request:\n%02x:%02x:%02x:%02x:%02x:%02x "
