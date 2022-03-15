@@ -9,12 +9,12 @@ uint32_t	ipToInt(const struct sockaddr *ip)
 
 void     ipToSockaddr(const uint8_t ip[IPV4_ADDR_LEN], struct sockaddr *sock)
 {
+	sock->sa_family = AF_INET;
+	ft_memcpy( &((struct sockaddr_in *) sock)->sin_addr, ip, IPV4_ADDR_LEN);
 # ifdef OSX
 	sock->sa_len = 16;
 # endif //OSX
-	sock->sa_family = AF_INET;
-	ft_memcpy( &((struct sockaddr_in *) sock)->sin_addr, ip, IPV4_ADDR_LEN);
-} 
+}
 
 # ifdef OSX
 int     getIfMacAddress(struct ether_addr *ethAddr, const char* ifname)
@@ -47,9 +47,29 @@ int     getIfMacAddress(struct ether_addr *ethAddr, const char* ifname)
 	ft_memcpy(ethAddr, macAddr, ETHER_ADDR_LEN);
 	return EXIT_SUCCESS;
 }
-
 # endif //OSX
 
+# ifdef LINUX
+# include <sys/ioctl.h>
+int		getIfMacAddress(ft_malcolm *malc, macAddr_t *addr)
+{
+	struct ifreq	ifr;
+	// unsigned char *mac;
+
+	ifr.ifr_addr.sa_family = AF_INET;
+	ft_strncpy(ifr.ifr_name, malc->ifName, IF_NAMESIZE);
+	if (ioctl(malc->socket, SIOCGIFHWADDR, &ifr))
+	{
+		dprintf(STDERR_FILENO, "ioctl failed because of:%s\n", strerror(errno));
+		return EXIT_FAILURE;
+	}
+	// mac = (unsigned char *) ifr.ifr_hwaddr.sa_data;
+	ft_memcpy(addr, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+
+	printMac(addr, "Interface mac address = ");
+	return EXIT_SUCCESS;
+}
+# endif //LINUX
 // RECV an UDP packet
 // int waitUDPRequest(ft_malcolm *malc)
 // {
