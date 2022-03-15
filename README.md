@@ -33,8 +33,25 @@ Two query:
 	The message header specifies the types of network in use at each layer as well as the size of addresses of each.   
 	The message header is completed with the operation code for request (1) and reply (2).    
 	The payload of the packset consists of four addresses, the hardware and protocol address of the sender and receiver hosts.  
-
-	Total: 8 bytes   
+```
+  /*
+   *  This structure defines an ethernet arp header.
+   */
+  
+  struct arpPacket {
+      __be16     		ar_hrd;     /* format of hardware address   */
+      __be16     		ar_pro;     /* format of protocol address   */
+      unsigned char		ar_hln;     /* length of hardware address   */
+      unsigned char		ar_pln;     /* length of protocol address   */
+      __be16      		ar_op;      /* ARP operation code (1 | 2)     */
+  
+      unsigned char		ar_sha[ETH_ALEN];	/* sender hardware address  */
+      unsigned char		ar_sip[4];			/* sender IP address        */
+      unsigned char		ar_tha[ETH_ALEN];	/* target hardware address  */
+      unsigned char		ar_tip[4];			/* target IP address        */
+  
+  };
+```
 	- Htype 2 byte
 	- Ptype 2 byte
 		for IPv4 the value is :`0x0800`
@@ -91,7 +108,17 @@ https://circle-networks.com/resources?lang=en&doc=bl200076p
 https://www.freebsd.org/cgi/man.cgi?query=bpf&sektion=4&manpath=FreeBSD+7.1-RELEASE
 Debian shortcut https://nui.fr/obsolescence-de-net-tools-ifconfig-ping/
 
-SO_BINDTODEVICE is deprecated since 1999.
+https://security.stackexchange.com/questions/41961/arp-poisoning-between-a-wired-and-wireless-network
+https://stackoverflow.com/questions/16710040/arp-request-and-reply-using-c-socket-programming    
+
+## Tips
+`SO_BINDTODEVICE` is deprecated since 1999. Use `bind()` with a `struct sockaddr_ll` instead   
+
+Enable IP forwarding: 
+mac:	`sysctl -w net.inet.ip.forwarding=1`    
+linux:	`echo 1 > /proc/sys/net/ipv4/ip_forward`    
+Broadcasting udp package: `nc -ub broadcast_addr port` on linux
+
 # usefull for OSX
 https://www.vankuik.nl/2012-02-09_Writing_ethernet_packets_on_OS_X_and_BSD
 
@@ -100,9 +127,6 @@ https://man7.org/linux/man-pages/man7/packet.7.html
 # Very trés trés important
 	https://security.stackexchange.com/questions/197453/mitm-using-arp-spoofing-with-kali-linux-running-on-virtualbox-with-bridged-wifi
 
-Broadcasting udp package: `nc -ub broadcast_addr port` on linux
-
-Enable IP forwarding: `sysctl -w net.inet.ip.forwarding=1`   
 
 
 bpf0 is lo0

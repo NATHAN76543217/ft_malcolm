@@ -4,27 +4,40 @@
 
 int bpfSetOption(ft_malcolm *malc)
 {
-	struct ifreq ifr;
-	u_int32_t enable = 1;
+	struct ifreq	ifr;
+	u_int32_t		enable = 1;
 
 	if (malc->opt.verbose)
 		dprintf(STDOUT_FILENO, "Setting bpf options.\n");
+
 	/* Associate the bpf device with an interface */ //TODO ft_strlcpy
-	ft_strlcpy(ifr.ifr_name, malc->opt.ifName, sizeof(ifr.ifr_name)-1);
+	ft_strlcpy(ifr.ifr_name, malc->ifName, sizeof(ifr.ifr_name)-1);
 	if(ioctl(malc->socket, BIOCSETIF, &ifr) < 0)
-		return -1;
+	{
+		dprintf(STDERR_FILENO, "ioct (BIOCSETIF) failed cause: %s\n", strerror(errno));
+		return EXIT_FAILURE;
+	}
 
 	/* Set header complete mode */
 	if(ioctl(malc->socket, BIOCSHDRCMPLT, &enable) < 0)
-		return -1;
+	{
+		dprintf(STDERR_FILENO, "ioct (BIOCSHDRCMPLT) failed cause: %s\n", strerror(errno));
+		return EXIT_FAILURE;
+	}
 
 	/* Monitor packets sent from our interface */
 	if(ioctl(malc->socket, BIOCSSEESENT, &enable) < 0)
-		return -1;
+	{
+		dprintf(STDERR_FILENO, "ioct (BIOCSSEESENT) failed cause: %s\n", strerror(errno));
+		return EXIT_FAILURE;
+	}
 
 	/* Return immediately when a packet received */
 	if(ioctl(malc->socket, BIOCIMMEDIATE, &enable) < 0)
-		return -1;
+	{
+		dprintf(STDERR_FILENO, "ioct (BIOCIMMEDIATE) failed cause: %s\n", strerror(errno));
+		return EXIT_FAILURE;
+	}
 
 	return 0;
 }
@@ -35,8 +48,10 @@ int bpfCheckDlt(ft_malcolm *malc)
 
 	/* Ensure we are dumping the datalink we expect DLT described in <net/bpf.h> */
 	if(ioctl(malc->socket, BIOCGDLT, &dlt) < 0)
+	{
+		dprintf(STDERR_FILENO, "ioct failed cause: %s\n", strerror(errno));
 		return EXIT_FAILURE;
-
+	}
 	switch (dlt) {
 		case DLT_EN10MB:
 			dprintf(STDOUT_FILENO, "datalink type: %u (DLT_EN10MB)\n", dlt);
@@ -74,7 +89,10 @@ int	bpfSetFilter(ft_malcolm *malc)
 	fcode.bf_insns = &insns[0];
 
 	if(ioctl(malc->socket, BIOCSETF, &fcode) < 0)
+	{
+		dprintf(STDERR_FILENO, "ioct failed cause: %s\n", strerror(errno));
 		return EXIT_FAILURE;
+	}
 	return EXIT_SUCCESS;
 }
 
@@ -100,7 +118,8 @@ int read_packets(ft_malcolm *malc)
 		return EXIT_FAILURE;
 	}
 
-	dprintf(STDOUT_FILENO, "Waiting a msg from(%s)\n", ipToStr(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN));
+	// dprintf(STDOUT_FILENO, "Waiting a msg from (%s)\n", ipToStr(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN));
+	dprintf(STDOUT_FILENO, "Waiting a request for (%s)\n", ipToStr(&malc->sockTargetIp, ipBuf, INET_ADDRSTRLEN));
 
 	while (1)
 	{
@@ -183,6 +202,14 @@ int read_packets(ft_malcolm *malc)
 					/* Tell source that we are target */
 					dprintf(STDOUT_FILENO, "Now get ready to send an ARP reply\n");
 					spoofArp(malc);
+
+					int i = 15;
+					while (i > 0)
+					{
+						spoofArp(malc);
+						usleep(30);
+						i--;
+					}
 			}
 			p += BPF_WORDALIGN(bh->bh_hdrlen + bh->bh_caplen);
 		}
