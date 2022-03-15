@@ -7,7 +7,7 @@ int bpfSetOption(ft_malcolm *malc)
 	struct ifreq ifr;
 	u_int32_t enable = 1;
 
-	if (malc->verbose)
+	if (malc->opt.verbose)
 		dprintf(STDOUT_FILENO, "Setting bpf options.\n");
 	/* Associate the bpf device with an interface */ //TODO ft_strlcpy
 	ft_strlcpy(ifr.ifr_name, malc->opt.ifName, sizeof(ifr.ifr_name)-1);
@@ -82,7 +82,7 @@ int read_packets(ft_malcolm *malc)
 {
 	char    *p = NULL;
 	char	ipBuf[INET_ADDRSTRLEN];
-	char	ipBuf2[INET_ADDRSTRLEN];
+	// char	ipBuf2[INET_ADDRSTRLEN];
 	ssize_t n = 0;
 	size_t  blen = 0;
 	size_t	packet_len = sizeof(struct ether_header) + sizeof(struct ether_arp);
@@ -100,7 +100,7 @@ int read_packets(ft_malcolm *malc)
 		return EXIT_FAILURE;
 	}
 
-	dprintf(STDOUT_FILENO, "Waitig a msg from(%s)\n", ipToStr(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN));
+	dprintf(STDOUT_FILENO, "Waiting a msg from(%s)\n", ipToStr(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN));
 
 	while (1)
 	{
@@ -129,58 +129,59 @@ int read_packets(ft_malcolm *malc)
 			ah = (struct ether_arp *)(eh + 1);
 				
 
-			uint32_t SPA = (*(uint32_t*)ah->arp_spa);
-			u_char *cSPA = (u_char *)&SPA;
+			// uint SPA = (*(uint*)ah->arp_spa);
+			// u_char *cSPA = (u_char *)&SPA;
 
-			uint32_t TPA = (*(uint32_t*)ah->arp_tpa);
-			u_char *cTPA = (u_char *)&TPA;
-				dprintf(STDOUT_FILENO, "Receive an ARP request:\n%02x:%02x:%02x:%02x:%02x:%02x "
-					"%02x:%02x:%02x:%02x:%02x:%02x REQ Who has (%u.%u.%u.%u)? Tell (%u.%u.%u.%u)\n",
-					eh->ether_shost[0], eh->ether_shost[1], eh->ether_shost[2],
-					eh->ether_shost[3], eh->ether_shost[4], eh->ether_shost[5],
-					eh->ether_dhost[0], eh->ether_dhost[1], eh->ether_dhost[2],
-					eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5],
-					cTPA[0], cTPA[1], cTPA[2], cTPA[3],
-					cSPA[0], cSPA[1], cSPA[2], cSPA[3]);
-			uint32_t intIp = (ipToInt(&malc->sockTargetIp));
-			u_char *charIp = (u_char *)&intIp;
+			// uint TPA = (*(uint*)ah->arp_tpa);
+			// u_char *cTPA = (u_char *)&TPA;
+				// dprintf(STDOUT_FILENO, "Receive an ARP request:\n%02x:%02x:%02x:%02x:%02x:%02x "
+				// 	"%02x:%02x:%02x:%02x:%02x:%02x REQ Who has (%u.%u.%u.%u)? Tell (%u.%u.%u.%u)\n",
+				// 	eh->ether_shost[0], eh->ether_shost[1], eh->ether_shost[2],
+				// 	eh->ether_shost[3], eh->ether_shost[4], eh->ether_shost[5],
+				// 	eh->ether_dhost[0], eh->ether_dhost[1], eh->ether_dhost[2],
+				// 	eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5],
+				// 	cTPA[0], cTPA[1], cTPA[2], cTPA[3],
+				// 	cSPA[0], cSPA[1], cSPA[2], cSPA[3]);
+			// uint intIp = (ipToInt(&malc->sockTargetIp));
+			// u_char *charIp = (u_char *)&intIp;
 
 
 			
-			dprintf(STDOUT_FILENO,"1 - %d\n"
-			"2- %d | sha == %u (%u.%u.%u.%u) | srcMac == %u (%u.%u.%u.%u)\n"
-			"3- %d\n"
-			"4- %d\n",
-					(ntohs(ah->ea_hdr.ar_op) == ARPOP_REQUEST),
-					!ft_memcmp(ah->arp_sha, &malc->srcMac, ETHER_ADDR_LEN),
-					TPA, 
-					cTPA[0],
-					cTPA[1],
-					cTPA[2],
-					cTPA[3],
-					intIp,
-					charIp[0],
-					charIp[1],
-					charIp[2],
-					charIp[3],
-					(*(uint32_t*)ah->arp_spa == ipToInt(&malc->sockSrcIp)),
-					(*(uint32_t*)ah->arp_tpa == ipToInt(&malc->sockTargetIp))
-					);
+			// dprintf(STDOUT_FILENO,"1 - %d\n"
+			// "2- %d | sha == %u (%u.%u.%u.%u) | srcMac == %u (%u.%u.%u.%u)\n"
+			// "3- %d\n"
+			// "4- %d\n",
+			// 		(ntohs(ah->ea_hdr.ar_op) == ARPOP_REQUEST),
+			// 		!ft_memcmp(ah->arp_sha, &malc->srcMac, ETHER_ADDR_LEN),
+			// 		TPA, 
+			// 		cTPA[0],
+			// 		cTPA[1],
+			// 		cTPA[2],
+			// 		cTPA[3],
+					// intIp,
+			// 		charIp[0],
+			// 		charIp[1],
+			// 		charIp[2],
+			// 		charIp[3],
+			// 		(*(uint*)ah->arp_spa == ipToInt(&malc->sockSrcIp)),
+			// 		(*(uint*)ah->arp_tpa == ipToInt(&malc->sockTargetIp))
+			// 		);
 			if (ntohs(ah->ea_hdr.ar_op) == ARPOP_REQUEST &&
 				// !ft_memcmp(ah->arp_sha, &malc->srcMac, ETHER_ADDR_LEN) && 
 				// (*(uint32_t*)ah->arp_spa == ipToInt(&malc->sockSrcIp)) &&
 				(*(uint32_t*)ah->arp_tpa == ipToInt(&malc->sockTargetIp))
 				)
 			{
-				dprintf(STDOUT_FILENO, "\nAccept request:\n%02x:%02x:%02x:%02x:%02x:%02x "
-					"%02x:%02x:%02x:%02x:%02x:%02x REQ Who has %s? Tell %s\n",
-					eh->ether_shost[0], eh->ether_shost[1], eh->ether_shost[2],
-					eh->ether_shost[3], eh->ether_shost[4], eh->ether_shost[5],
-					eh->ether_dhost[0], eh->ether_dhost[1], eh->ether_dhost[2],
-					eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5],
-					ipToStr(&malc->sockTargetIp, ipBuf2, INET_ADDRSTRLEN),
-					ipToStr(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN ));
+				// dprintf(STDOUT_FILENO, "\nAccept request:\n%02x:%02x:%02x:%02x:%02x:%02x "
+				// 	"%02x:%02x:%02x:%02x:%02x:%02x REQ Who has %s? Tell %s\n",
+				// 	eh->ether_shost[0], eh->ether_shost[1], eh->ether_shost[2],
+				// 	eh->ether_shost[3], eh->ether_shost[4], eh->ether_shost[5],
+				// 	eh->ether_dhost[0], eh->ether_dhost[1], eh->ether_dhost[2],
+				// 	eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5],
+				// 	ipToStr(&malc->sockTargetIp, ipBuf2, INET_ADDRSTRLEN),
+					// ipToStr(&malc->sockSrcIp, ipBuf, INET_ADDRSTRLEN ));
 					/* Tell source that we are target */
+					dprintf(STDOUT_FILENO, "Now get ready to send an ARP reply\n");
 					spoofArp(malc);
 			}
 			p += BPF_WORDALIGN(bh->bh_hdrlen + bh->bh_caplen);

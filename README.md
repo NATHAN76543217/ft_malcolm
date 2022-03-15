@@ -80,7 +80,6 @@ Je dois envoyer une reply normalement.
 https://en.wikipedia.org/wiki/Address_Resolution_Protocol
 https://stackoverflow.com/questions/12515005/receiving-udp-broadcast
 https://stackoverflow.com/questions/1955198/when-is-ipproto-udp-required
-https://man7.org/linux/man-pages/man7/packet.7.html
 https://github.com/cofyc/argparse
 https://stackoverflow.com/questions/21721145/how-to-send-a-raw-ethernet-frame-using-the-netbsd-stack
 https://sock-raw.org/papers/sock_raw
@@ -90,13 +89,20 @@ https://jnc0x24dd099bb870.github.io/Network/ARP/ARP2/index.html
 https://www.freebsd.org/cgi/man.cgi?query=bpf&sektion=4&manpath=FreeBSD+4.7-RELEASE
 https://circle-networks.com/resources?lang=en&doc=bl200076p
 https://www.freebsd.org/cgi/man.cgi?query=bpf&sektion=4&manpath=FreeBSD+7.1-RELEASE
-https://www.vankuik.nl/2012-02-09_Writing_ethernet_packets_on_OS_X_and_BSD
 Debian shortcut https://nui.fr/obsolescence-de-net-tools-ifconfig-ping/
+
+SO_BINDTODEVICE is deprecated since 1999.
+# usefull for OSX
+https://www.vankuik.nl/2012-02-09_Writing_ethernet_packets_on_OS_X_and_BSD
+
+# usefull for Linux
+https://man7.org/linux/man-pages/man7/packet.7.html
+# Very trés trés important
+	https://security.stackexchange.com/questions/197453/mitm-using-arp-spoofing-with-kali-linux-running-on-virtualbox-with-bridged-wifi
 
 Broadcasting udp package: `nc -ub broadcast_addr port` on linux
 
-TO NOT DO: program that wait UDP
-TODO: program that wait arp request 
+Enable IP forwarding: `sysctl -w net.inet.ip.forwarding=1`   
 
 
 bpf0 is lo0

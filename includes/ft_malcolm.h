@@ -24,6 +24,7 @@
 #  include <net/if_types.h>
 #  include <net/if_dl.h> // sockaddr_dl
 #  include <net/bpf.h>
+
 # endif
 
 # include "libft.h"
@@ -35,6 +36,14 @@ struct ft_malcolm_options
 	int		reverse;
 	char	*ifName;
 };
+
+struct ft_malcolm_options
+{
+	int				verbose;
+	int				reverse;
+	char    		*ifName;
+};
+
 
 typedef struct ft_malcolm
 {
