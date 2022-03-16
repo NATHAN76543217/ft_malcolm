@@ -2,18 +2,23 @@
 A man-in-the-middle attack script by ARP spoofing.
 
 # Build
-
+//TODO add SIGTERM handler
+Clone repository:
+	`git clone https://NATHAN76543217/ft_malcom.git && cd ft_malcolm/ && git submodule init && git submodule update`
 Run the command `make`.
 Usage: `./ft_malcolm src_ip src_mac_address target_ip target_mac_address`
 
 # options
-	Usage: ./ft_malcolm [options] [--] target1_ip target1_mac target2_ip target2_mac
+	Usage: 
+		./ft_malcolm [options] [--] source_ip source_mac dest_ip    
+		./ft_malcolm [options] [--] source_ip source_mac target_ip target_mac
 	ARP spoofing (poisoning) program.
 
 		-h, --help                show this help message and exit
 
 	Basic options
 		-v, --verbose             enable verbose mode.
+		-r, --reverse             enable verbose mode.
 		-i, --interface=<str>     force to use a specific interface.
 	
 # Processus
@@ -33,6 +38,17 @@ Two query:
 	The message header specifies the types of network in use at each layer as well as the size of addresses of each.   
 	The message header is completed with the operation code for request (1) and reply (2).    
 	The payload of the packset consists of four addresses, the hardware and protocol address of the sender and receiver hosts.  
+```
+  /*
+   *  This structure defines an ethernet header.
+   */
+
+typedef struct __attribute__((packed)) ether_header {
+    uint8_t  ether_dhost[ETHER_ADDR_LEN];
+    uint8_t  ether_shost[ETHER_ADDR_LEN];
+    uint16_t ether_type;
+} ETHERHDR;
+```
 ```
   /*
    *  This structure defines an ethernet arp header.

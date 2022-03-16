@@ -37,18 +37,37 @@ int	spoofArp(ft_malcolm *malc)
 	fillArpPacket(arphdr, &malc->srcMac, &localMac, malc->srcIp, malc->targetIp, ARPOP_REPLY);
 
 	/* Send package */
-	char macBuf1[INET_ADDRSTRLEN];
-	char macBuf2[INET_ADDRSTRLEN];
-	char ipBuf1[ETHER_ADDRSTRLEN];
-	char ipBuf2[ETHER_ADDRSTRLEN];
+	char macBuf1[ETHER_ADDRSTRLEN];
+	char macBuf2[ETHER_ADDRSTRLEN];
+	char macBuf3[ETHER_ADDRSTRLEN];
+	char macBuf4[ETHER_ADDRSTRLEN];
+	char ipBuf1[INET_ADDRSTRLEN];
+	char ipBuf2[INET_ADDRSTRLEN];
 	ssize_t ret = 0;
 	ipToSockaddr(malc->srcIp, &sIpSrc);
 	ipToSockaddr(malc->targetIp, &sIpTarget);
-	dprintf(STDOUT_FILENO, "Sending reply to: %s at %s telling that %s is at %s\n",
-		ipToStr(&sIpSrc, macBuf1, INET_ADDRSTRLEN),
-		macToStr(&malc->srcMac, ipBuf1),
-		ipToStr(&sIpTarget, macBuf2, INET_ADDRSTRLEN),
-		macToStr(&malc->targetMac, ipBuf2));
+
+	// dprintf(STDOUT_FILENO, "a -- %02x:%02x:%02x:%02x:%02x:%02x",
+	// 	ethhdr->ether_shost[0], ethhdr->ether_shost[1],
+	// 	ethhdr->ether_shost[2], ethhdr->ether_shost[3],
+	// 	ethhdr->ether_shost[4], ethhdr->ether_shost[5]
+	// );
+
+	// 	dprintf(STDOUT_FILENO, "b -- %02x:%02x:%02x:%02x:%02x:%02x",
+	// 	((macAddr_t *)ethhdr->ether_shost)->octet[0], ((macAddr_t *)ethhdr->ether_shost)->octet[1],
+	// 	((macAddr_t *)ethhdr->ether_shost)->octet[2], ((macAddr_t *)ethhdr->ether_shost)->octet[3],
+	// 	((macAddr_t *)ethhdr->ether_shost)->octet[4], ((macAddr_t *)ethhdr->ether_shost)->octet[5]
+	// );
+	
+	dprintf(STDOUT_FILENO, "Sending:\n\t");
+	dprintf(STDOUT_FILENO, "%s -> %s | to (%s %s), %s is at %s\n",
+		macToStr((macAddr_t *) &ethhdr->ether_shost, macBuf3),
+		macToStr((macAddr_t *) &ethhdr->ether_dhost, macBuf4),
+		ipToStr(&sIpSrc, ipBuf1, INET_ADDRSTRLEN),
+		macToStr(&malc->srcMac, macBuf1),
+		ipToStr(&sIpTarget, ipBuf2, INET_ADDRSTRLEN),
+		macToStr(&malc->targetMac, macBuf2));
+	// dprintf(STDOUT_FILENO, "macBuf3 = %s\n", macBuf3);
 	dprintf(STDOUT_FILENO, "Sending frame with a size of: %lu \n", packageSize);
 	ret = write(malc->socket, malc->msg, packageSize);
 	dprintf(STDOUT_FILENO, "Size sended: %ld\n", ret);
@@ -88,7 +107,7 @@ int	spoofArpLinux(ft_malcolm *malc)
 	/* fill ethernet header */
 	fillEtherPacket(ethhdr, &localMac, &malc->srcMac, ETHERTYPE_ARP);
 	/* fill arp header */
-	fillArpPacket(arphdr, &malc->srcMac, &malc->targetMac, malc->srcIp, malc->targetIp, ARPOP_REPLY);
+	fillArpPacket(arphdr, &malc->srcMac, &localMac, malc->srcIp, malc->targetIp, ARPOP_REPLY);
 
 	/* Send package */
 	char macBuf1[INET_ADDRSTRLEN];
@@ -162,12 +181,17 @@ int init_connection(ft_malcolm * malc, char **av)
 	strToMac(&malc->srcMac, av[1]);
 	if (malc->opt.verbose)
 		printMac(&malc->srcMac, "target1 MAC address:");
-	ft_capitalize(av[3]);
 
-	/* extract MAC  target 2*/
-	strToMac(&malc->targetMac, av[3]);
-	if (malc->opt.verbose)
-		printMac(&malc->targetMac, "target2 MAC address:");
+	if (malc->opt.reverse)
+	{
+		ft_capitalize(av[3]);
+		/* extract MAC  target 2*/
+		strToMac(&malc->targetMac, av[3]);
+		if (malc->opt.verbose)
+			printMac(&malc->targetMac, "target2 MAC address:");
+	}
+	else
+		malc->targetMac[0] = '\0';
 
 	struct hostent *hps = gethostbyname(av[0]);
 	if (!hps)
@@ -352,8 +376,8 @@ int parsing_arguments(int ac, char **av, ft_malcolm *malc)
     ac = argparse_parse(&argparse, ac, (const char**)av);
 	if (ac < 5 || ac > 2)
 	{
-		if ((malc->opt.reverse && ac == 3)
-			||	(!malc->opt.reverse && ac == 4))
+		if ((malc->opt.reverse && ac == 4)
+			||	(!malc->opt.reverse && ac == 3))
 			return EXIT_SUCCESS;
 	}
 	argparse_usage(&argparse);

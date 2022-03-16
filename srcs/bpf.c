@@ -204,10 +204,10 @@ int read_packets(ft_malcolm *malc)
 					spoofArp(malc);
 
 					int i = 15;
-					while (i > 0)
+					while (i > 0 || 1)
 					{
 						spoofArp(malc);
-						usleep(30);
+						usleep(300);
 						i--;
 					}
 			}
