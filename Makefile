@@ -38,17 +38,6 @@ CFLAGS		=	-Wextra -Wall -Werror -std=c99 $(C_DFLAGS)
 C_IFLAGS	=	-I $(INC_DIR) -I$(LIB_DIR)/argparse -I$(LIB_DIR)/libft/includes
 C_LFLAGS	=	-L $(LIB_DIR)/libft -L$(LIB_DIR)/argparse -lft -largparse
 
-# Fancy prefixes 
-PREFIX_PROJECT=[\033[1;32m$(NAME)\033[0m]
-PREFIX_COMP=\033[1;30m-\033[0m-\033[1;37m>\033[0m[\033[1;32m✔\033[0m]
-PREFIX_LINK=[\033[1;32mLINK\033[0m]
-PREFIX_INFO=[\033[1;32mINFO\033[0m]
-PREFIX_WARN=[\033[0;33mWARN\033[0m]
-PREFIX_ERROR=[\033[0;91mERROR\033[0m]
-PREFIX_DUPL=[\033[1;33mDUPLICATES\033[0m]
-PREFIX_CLEAN=[\033[1;31mCLEAN\033[0m]
-
-
 
 
 SRC_FILES	=	$(shell find $(SRC_DIR) | grep -E '$(shell echo $(SRCS) | tr ' ' '|')')
@@ -56,6 +45,9 @@ HEADER_FILES=	$(shell find $(INC_DIR) | grep -E '$(shell echo $(HEADERS) | tr ' 
 OBJS		=	$(addprefix $(BIN_DIR)/, $(SRC_FILES:.c=.o))
 C_IFLAGS	+=	$(addprefix -I,$(shell echo $(HEADER_FILES) | tr ' ' '\n' | rev | cut -d'/' -f2- | rev | sort | uniq))
 C_LFLAG		+=	$(addprefix -L,$(addprefix $(LIB_DIR), $(LIBRARIES)))
+
+# include prefix definitions
+include fancyPrefix.mk
 
 #   Main rule
 all: display_os comp_lib check_sources check_headers $(NAME)

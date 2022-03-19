@@ -123,9 +123,13 @@ https://www.freebsd.org/cgi/man.cgi?query=bpf&sektion=4&manpath=FreeBSD+4.7-RELE
 https://circle-networks.com/resources?lang=en&doc=bl200076p
 https://www.freebsd.org/cgi/man.cgi?query=bpf&sektion=4&manpath=FreeBSD+7.1-RELEASE
 Debian shortcut https://nui.fr/obsolescence-de-net-tools-ifconfig-ping/
+https://security.stackexchange.com/questions/133784/does-arp-spoofing-work-on-all-lans
 
 https://security.stackexchange.com/questions/41961/arp-poisoning-between-a-wired-and-wireless-network
 https://stackoverflow.com/questions/16710040/arp-request-and-reply-using-c-socket-programming    
+
+The `ARP Cache Poisoning`section of this link is very interesting, it report some behaviors that I encountered myself. Pour ma part j'ai réussi à faire accepter des paquets et à maintenir le spoof en place en renvoyant régulierement des paquets ARP REPLY à la target:
+https://www.utc.edu/sites/default/files/2021-04/course-paper-5620-attacktcpip.pdf
 
 ## Tips
 `SO_BINDTODEVICE` is deprecated since 1999. Use `bind()` with a `struct sockaddr_ll` instead   

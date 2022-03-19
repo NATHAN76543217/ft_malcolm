@@ -10,7 +10,7 @@ int bpfSetOption(ft_malcolm *malc)
 	if (malc->opt.verbose)
 		dprintf(STDOUT_FILENO, "Setting bpf options.\n");
 
-	/* Associate the bpf device with an interface */ //TODO ft_strlcpy
+	/* Associate the bpf device with an interface */
 	ft_strlcpy(ifr.ifr_name, malc->ifName, sizeof(ifr.ifr_name)-1);
 	if(ioctl(malc->socket, BIOCSETIF, &ifr) < 0)
 	{

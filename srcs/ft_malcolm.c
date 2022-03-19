@@ -191,7 +191,7 @@ int init_connection(ft_malcolm * malc, char **av)
 			printMac(&malc->targetMac, "target2 MAC address:");
 	}
 	else
-		malc->targetMac[0] = '\0';
+		ft_memset(&malc->targetMac, 0, ETHER_ADDR_LEN);
 
 	struct hostent *hps = gethostbyname(av[0]);
 	if (!hps)
@@ -308,7 +308,7 @@ uint32_t	ft_malcolm_linux(ft_malcolm *malc)
 				usleep(200);
 			}
 		}
-		//TODO know check for a request looking for target then make and send a reply to src
+		//TODO now check for a request looking for target then make and send a reply to src
 	}
 
 	return EXIT_SUCCESS;
